@@ -93,10 +93,6 @@ jobs:
           name: Calculator-${{ github.event.inputs.platform }}-${{ github.event.inputs.configuration }}
           path: |
             ${{ github.workspace }}/output/**/*.msixbundle
-            ${{ github.workspace }}/output/**/*.msix
-            ${{ github.workspace }}/output/**/*.exe
-            ${{ github.workspace }}/output/**/*.dll
-            ${{ github.workspace }}/output/**/AppPackages/**
           if-no-files-found: warn
           retention-days: 30
           
