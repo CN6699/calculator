@@ -66,10 +66,21 @@ jobs:
             -p:AppxPackageSigningEnabled=false `
             -p:AppxBundle=Always `
             -p:GenerateProjectSpecificOutputFolder=true `
+            -p:DebugType=none `
+            -p:DebugSymbols=false `
+            -p:GenerateDebugInformation=false `
+            -p:Optimize=true `
             -maxCpuCount `
             -t:Publish `
             -p:PublishDir=${{ github.workspace }}\output\publish\
             
+      - name: Clean up debug files
+        shell: pwsh
+        run: |
+          Write-Host "Removing PDB files and other debug artifacts..."
+          Get-ChildItem -Path "${{ github.workspace }}/output" -Recurse -Include *.pdb,*.binlog,*.xml,*.pri,*.xbf -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+          Write-Host "Cleanup complete"
+          
       - name: List output files (debug)
         shell: pwsh
         run: |
@@ -81,8 +92,8 @@ jobs:
         with:
           name: Calculator-${{ github.event.inputs.platform }}-${{ github.event.inputs.configuration }}
           path: |
-            ${{ github.workspace }}/output/**/*.msix
             ${{ github.workspace }}/output/**/*.msixbundle
+            ${{ github.workspace }}/output/**/*.msix
             ${{ github.workspace }}/output/**/*.exe
             ${{ github.workspace }}/output/**/*.dll
             ${{ github.workspace }}/output/**/AppPackages/**
