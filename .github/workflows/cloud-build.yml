@@ -87,12 +87,14 @@ jobs:
           Write-Host "=== Output directory contents ==="
           Get-ChildItem -Path "${{ github.workspace }}/output" -Recurse -Name | Select-Object -First 50
           
-      - name: Upload Artifacts - MSIX Package
+      - name: Upload Artifacts - EXE and DLL
         uses: actions/upload-artifact@v4
         with:
           name: Calculator-${{ github.event.inputs.platform }}-${{ github.event.inputs.configuration }}
           path: |
-            ${{ github.workspace }}/output/**/*.msixbundle
+            ${{ github.workspace }}/output/**/*.exe
+            ${{ github.workspace }}/output/**/*.dll
+            ${{ github.workspace }}/output/**/*.pri
           if-no-files-found: warn
           retention-days: 30
           
