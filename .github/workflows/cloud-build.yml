@@ -1,0 +1,92 @@
+name: Cloud Build - Calculator
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: '目标平台'
+        required: true
+        default: 'x64'
+        type: choice
+        options:
+          - x64
+          - x86
+          - ARM64
+      configuration:
+        description: '构建配置'
+        required: true
+        default: 'Release'
+        type: choice
+        options:
+          - Debug
+          - Release
+
+jobs:
+  build:
+    name: Build Calculator (${{ github.event.inputs.platform }})
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+        with:
+          nuget-version: '6.x'
+          
+      - name: Restore NuGet packages
+        run: nuget restore ./src/Calculator.sln
+        
+      - name: Generate version
+        id: version
+        shell: pwsh
+        run: |
+          $version = "1.0.${{ github.run_number }}.0"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $version"
+          
+      - name: Update AppxManifest version
+        shell: pwsh
+        run: |
+          ./build/scripts/UpdateAppxManifestVersion.ps1 `
+            -AppxManifest ./src/Calculator/Package.appxmanifest `
+            -Version ${{ steps.version.outputs.version }}
+            
+      - name: Build Solution
+        shell: pwsh
+        run: |
+          msbuild ./src/Calculator.sln `
+            -p:Platform=${{ github.event.inputs.platform }} `
+            -p:Configuration=${{ github.event.inputs.configuration }} `
+            -p:AppxPackageSigningEnabled=false `
+            -p:AppxBundle=Always `
+            -p:GenerateProjectSpecificOutputFolder=true `
+            -maxCpuCount
+            
+      - name: Upload Artifacts - MSIX Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Calculator-${{ github.event.inputs.platform }}-${{ github.event.inputs.configuration }}
+          path: |
+            ${{ github.workspace }}/${{ github.event.inputs.platform }}/${{ github.event.inputs.configuration }}/Calculator/AppPackages/*
+            ${{ github.workspace }}/${{ github.event.inputs.platform }}/${{ github.event.inputs.configuration }}/Calculator/*.exe
+            ${{ github.workspace }}/${{ github.event.inputs.platform }}/${{ github.event.inputs.configuration }}/Calculator/*.dll
+          if-no-files-found: warn
+          retention-days: 30
+          
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## 📊 构建摘要" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "- **平台**: ${{ github.event.inputs.platform }}" >> $env:GITHUB_STEP_SUMMARY
+          echo "- **配置**: ${{ github.event.inputs.configuration }}" >> $env:GITHUB_STEP_SUMMARY
+          echo "- **版本**: ${{ steps.version.outputs.version }}" >> $env:GITHUB_STEP_SUMMARY
+          echo "- **状态**: ${{ job.status }}" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "### 📦 产物下载" >> $env:GITHUB_STEP_SUMMARY
+          echo "请在 Actions 页面的 Artifacts 区域下载编译产物" >> $env:GITHUB_STEP_SUMMARY
+        shell: pwsh
