@@ -59,21 +59,33 @@ jobs:
         shell: pwsh
         run: |
           msbuild ./src/Calculator.sln `
+            -bl:${{ github.workspace }}/output/Calculator.binlog `
+            -p:OutDir=${{ github.workspace }}\output\ `
             -p:Platform=${{ github.event.inputs.platform }} `
             -p:Configuration=${{ github.event.inputs.configuration }} `
             -p:AppxPackageSigningEnabled=false `
             -p:AppxBundle=Always `
             -p:GenerateProjectSpecificOutputFolder=true `
-            -maxCpuCount
+            -maxCpuCount `
+            -t:Publish `
+            -p:PublishDir=${{ github.workspace }}\output\publish\
             
+      - name: List output files (debug)
+        shell: pwsh
+        run: |
+          Write-Host "=== Output directory contents ==="
+          Get-ChildItem -Path "${{ github.workspace }}/output" -Recurse -Name | Select-Object -First 50
+          
       - name: Upload Artifacts - MSIX Package
         uses: actions/upload-artifact@v4
         with:
           name: Calculator-${{ github.event.inputs.platform }}-${{ github.event.inputs.configuration }}
           path: |
-            ${{ github.workspace }}/${{ github.event.inputs.platform }}/${{ github.event.inputs.configuration }}/Calculator/AppPackages/*
-            ${{ github.workspace }}/${{ github.event.inputs.platform }}/${{ github.event.inputs.configuration }}/Calculator/*.exe
-            ${{ github.workspace }}/${{ github.event.inputs.platform }}/${{ github.event.inputs.configuration }}/Calculator/*.dll
+            ${{ github.workspace }}/output/**/*.msix
+            ${{ github.workspace }}/output/**/*.msixbundle
+            ${{ github.workspace }}/output/**/*.exe
+            ${{ github.workspace }}/output/**/*.dll
+            ${{ github.workspace }}/output/**/AppPackages/**
           if-no-files-found: warn
           retention-days: 30
           
